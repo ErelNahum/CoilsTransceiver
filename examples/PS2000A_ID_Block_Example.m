@@ -185,7 +185,7 @@ blockGroupObj = blockGroupObj(1);
 % samples is used in this example.
 
 % set(ps2000aDeviceObj, 'numPreTriggerSamples', 0);
-% set(ps2000aDeviceObj, 'numPostTriggerSamples', 16384);
+set(ps2000aDeviceObj, 'numPostTriggerSamples', round(10^8 / timeIntervalNanoseconds));
 
 %%
 % This example uses the |runBlock()| function in order to collect a block of

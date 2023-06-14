@@ -1,18 +1,40 @@
-%% Modulating and Generating the signal in the PicoScope
+%% PicoScope 2000 Series (A API) Instrument Driver Oscilloscope Block Data Capture Example
+% This is an example of an instrument control session using a device 
+% object. The instrument control session comprises all the steps you 
+% are likely to take when communicating with your instrument. 
+%
+% These steps are:
+%    
+% # Create a device object   
+% # Connect to the instrument 
+% # Configure properties 
+% # Invoke functions 
+% # Disconnect from the instrument 
+%
+% To run the instrument control session, type the name of the file,
+% PS2000A_ID_Block_Example, at the MATLAB command prompt.
+% 
+% The file, PS2000A_ID_BLOCK_EXAMPLE.M must be on your MATLAB PATH. For
+% additional information on setting your MATLAB PATH, type 'help addpath'
+% at the MATLAB command prompt.
+%
+% *Example:*
+%     PS2000A_ID_Block_Example;
+%
+% *Description:*
+%     Demonstrates how to set properties and call functions in order to
+%     capture a block of data from a PicoScope 2000 Series Oscilloscope
+%     using the underlying 'A' API library functions.
+%
+% *See also:* <matlab:doc('icdevice') |icdevice|> | <matlab:doc('instrument/invoke') |invoke|>
+% 
+% *Copyright:* © 2015-2017 Pico Technology Ltd. See LICENSE file for terms.
 
-
-%% Data Loading
-window_freq = 10;
-signal_freq = 173e3;
-bits = [readmatrix('data.csv')]; %64
-bits = [bits, bits, bits, bits]; %256
-%%
-bits = [bits, bits]; %512
-%bits = [bits, bits, bits, bits]; %1024
-% bits = [bits, bits]; %4096
-
-% bits = randi([0,1], [1, 64]);
-%bits = [0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 ];
+%% Suggested input test signals
+% This example was published using the following test signals:
+%
+% * Channel A: 4 Vpp, 1 kHz sine wave
+% * Channel B: 2 Vpp, 1 kHz ramp up wave
 
 %% Clear command window and close any figures
 
@@ -21,7 +43,7 @@ close all;
 
 %% Load configuration information
 
-PS2000aConfig;
+PS2000aConfig
 
 %% Device connection
 
@@ -50,50 +72,38 @@ end
 
 % Create a device object. 
 % The serial number can be specified as a second input parameter.
-ps2000aDeviceObj = icdevice('picotech_ps2000a_generic.mdd');
-
+ps2000aDeviceObj = icdevice('picotech_ps2000a_generic.mdd', '');
+    
 % Connect device object to hardware.
-connect(ps2000aDeviceObj);
 
-%% Obtain Signalgenerator group object
-% Signal Generator properties and functions are located in the Instrument
-% Driver's Signalgenerator group.
+connect(ps2000aDeviceObj)
 
-sigGenGroupObj = get(ps2000aDeviceObj, 'Signalgenerator');
-sigGenGroupObj = sigGenGroupObj(1);
+%% Set channels
+% Default driver settings applied to channels are listed below - use the
+% Instrument Driver's |ps2000aSetChannel()| function to turn channels on or
+% off and set voltage ranges, coupling, as well as analog offset.
 
-%% Arbitrary waveform generator - set parameters
-set(ps2000aDeviceObj.Signalgenerator(1), 'startFrequency', window_freq);
-set(ps2000aDeviceObj.Signalgenerator(1), 'stopFrequency', window_freq);
-set(ps2000aDeviceObj.Signalgenerator(1), 'offsetVoltage', 0.0);
-set(ps2000aDeviceObj.Signalgenerator(1), 'peakToPeakVoltage', 2000.0);
+% In this example, data is collected on channels A and B. If it is a
+% 4-channel model, channels C and D will be switched off.
 
-%% Getting the PicoScope AWG buffer size, usually 2^15
-awgBufferSize = get(sigGenGroupObj, 'awgBufferSize');
+% Channels       : 0 - 1 (ps2000aEnuminfo.enPS2000AChannel.PS2000A_CHANNEL_A & PS2000A_CHANNEL_B)
+% Enabled        : 1 (PicoConstants.TRUE)
+% Type           : 1 (ps2000aEnuminfo.enPS2000ACoupling.PS2000A_DC)
+% Range          : 8 (ps2000aEnuminfo.enPS2000ARange.PS2000A_5V)
+% Analog Offset  : 0.0 V
 
-%% Modulation
-time_for_window = 1/window_freq;
-t = linspace(0, time_for_window, awgBufferSize);
-% figure(1)
-% imshow(reshape(bits, 32, 32) .', 'InitialMagnification',200);
+% Channels       : 2 - 3 (ps2000aEnuminfo.enPS2000AChannel.PS2000A_CHANNEL_C & PS2000A_CHANNEL_D)
+% Enabled        : 0 (PicoConstants.FALSE)
+% Type           : 1 (ps2000aEnuminfo.enPS2000ACoupling.PS2000A_DC)
+% Range          : 8 (ps2000aEnuminfo.enPS2000ARange.PS2000A_5V)
+% Analog Offset  : 0.0 V
 
-bits = 0.8 * bits;
-bits(1) = 1;
-% 
-% pulses = rectpulse(bits, length(t)/length(bits));
-% start_pulse = repelem([1,0],[length(t)/length(bits) length(t)-length(t)/length(bits)]);
-% signal_before_modulate = 0.90 * pulses + start_pulse;
-% f0 = 165e3;
-% f1 = 175e3;
-% [y] = bfsk_modulate(t, f0, f1, bits);
-% plot(t, y);
-y = sin(2*pi * signal_freq * t) .* rectpulse(bits, length(t)/length(bits));
-% figure(2)
-% plot(t,y);
-% y = 0.5*sin(2*pi*173e3*t);
-
-%% Arbitrary waveform generator - Invoking the signal
-[status.setSigGenArbitrarySimple] = invoke(sigGenGroupObj, 'setSigGenArbitrarySimple', y);
+if (ps2000aDeviceObj.channelCount == PicoConstants.QUAD_SCOPE)
+    
+    [status.setChC] = invoke(ps2000aDeviceObj, 'ps2000aSetChannel', 2, 0, 1, 8, 0.0);
+    [status.setChD] = invoke(ps2000aDeviceObj, 'ps2000aSetChannel', 3, 0, 1, 8, 0.0);
+    
+end
 
 %% Verify timebase index and maximum number of samples
 % Use the |ps2000aGetTimebase2()| function to query the driver as to the
@@ -137,8 +147,6 @@ fprintf('Timebase index: %d, sampling interval: %d ns\n', timebaseIndex, timeInt
 
 % Configure the device object's |timebase| property value.
 set(ps2000aDeviceObj, 'timebase', timebaseIndex);
-%%
-[status.setChA] = invoke(ps2000aDeviceObj, 'ps2000aSetChannel', ps2000aEnuminfo.enPS2000AChannel.PS2000A_CHANNEL_A, PicoConstants.TRUE, ps2000aEnuminfo.enPS2000ACoupling.PS2000A_AC, ps2000aEnuminfo.enPS2000ARange.PS2000A_1V, 0.0);
 
 %% Set simple trigger
 % Set a trigger on channel A, with an auto timeout - the default value for
@@ -160,7 +168,7 @@ set(triggerGroupObj, 'autoTriggerMs', 1000);
 % Threshold   : 1000 mV
 % Direction   : 2 (ps2000aEnuminfo.enPS2000AThresholdDirection.PS2000A_RISING)
 
-[status.setSimpleTrigger] = invoke(triggerGroupObj, 'setSimpleTrigger', 0, 595, 3);
+[status.setSimpleTrigger] = invoke(triggerGroupObj, 'setSimpleTrigger', 0, 1000, 2);
 
 %% Set block parameters and capture data
 % Capture a block of data and retrieve data values for channels A and B.
@@ -177,7 +185,7 @@ blockGroupObj = blockGroupObj(1);
 % samples is used in this example.
 
 % set(ps2000aDeviceObj, 'numPreTriggerSamples', 0);
-set(ps2000aDeviceObj, 'numPostTriggerSamples', round(10^8 / timeIntervalNanoseconds));
+% set(ps2000aDeviceObj, 'numPostTriggerSamples', 16384);
 
 %%
 % This example uses the |runBlock()| function in order to collect a block of
@@ -200,7 +208,7 @@ downsamplingRatioMode   = ps2000aEnuminfo.enPS2000ARatioMode.PS2000A_RATIO_MODE_
 
 % Provide additional output arguments for other channels e.g. chC for
 % channel C if using a 4-channel PicoScope.
-[numSamples, overflow, chA] = invoke(blockGroupObj, 'getBlockData', startIndex, segmentIndex, ...
+[numSamples, overflow, chA, chB] = invoke(blockGroupObj, 'getBlockData', startIndex, segmentIndex, ...
                                             downsamplingRatio, downsamplingRatioMode);
 
 %% Process data
@@ -221,7 +229,7 @@ timeMs = timeNs / 1e6;
 % Channel A
 axisHandleChA = subplot(2,1,1); 
 plot(axisHandleChA, timeMs, chA, 'b');
-ylim(axisHandleChA, [-1000 1000]); % Adjust vertical axis for signal.
+ylim(axisHandleChA, [-2500 2500]); % Adjust vertical axis for signal.
 
 title(axisHandleChA, 'Channel A');
 xlabel(axisHandleChA, 'Time (ms)');
@@ -230,24 +238,20 @@ grid(axisHandleChA);
 
 % Channel B
 axisHandleChB = subplot(2,1,2); 
-plot(axisHandleChB, 2*y, 'r');
-ylim(axisHandleChB, [-2.5 2.5]); % Adjust vertical axis for signal.
-xlim(axisHandleChB, [0, length(y)])
+plot(axisHandleChB, timeMs, chB, 'r');
+ylim(axisHandleChB, [-1500 1500]); % Adjust vertical axis for signal.
 
-title(axisHandleChB, 'Signal Generated');
-xlabel(axisHandleChB, 'Sample');
-ylabel(axisHandleChB, 'Voltage (V)');
+title(axisHandleChB, 'Channel B');
+xlabel(axisHandleChB, 'Time (ms)');
+ylabel(axisHandleChB, 'Voltage (mV)');
 grid(axisHandleChB);
 
-% figure(3)
-% plot(abs(calc_fft(chA, 10^9/timeIntervalNanoseconds)))
-
-%% Turn off signal generator
-[status.setSigGenOff] = invoke(sigGenGroupObj, 'setSigGenOff');
-
 %% Stop the device
+
 [status.stop] = invoke(ps2000aDeviceObj, 'ps2000aStop');
 
 %% Disconnect device
+% Disconnect device object from hardware.
+
 disconnect(ps2000aDeviceObj);
 delete(ps2000aDeviceObj);

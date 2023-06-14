@@ -5,8 +5,11 @@
 window_freq = 10;
 signal_freq = 173e3;
 bits = [readmatrix('data.csv')]; %64
-% bits = [bits, bits, bits, bits]; %256
-% bits = [bits, bits, bits, bits]; %1024
+bits = [bits, bits, bits, bits]; %256
+%%
+% bits = [bits, bits]; %512
+bits = [bits, bits, bits, bits]; %1024
+% bits = [bits, bits]; %4096
 
 % bits = randi([0,1], [1, 64]);
 %bits = [0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 ];
@@ -74,7 +77,7 @@ t = linspace(0, time_for_window, awgBufferSize);
 figure(1)
 % imshow(reshape(bits, 32, 32) .', 'InitialMagnification',200);
 
-bits = 0.9 * bits;
+bits = 0.8 * bits;
 bits(1) = 1;
 % 
 % pulses = rectpulse(bits, length(t)/length(bits));
